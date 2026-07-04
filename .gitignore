@@ -1,0 +1,29 @@
+# Binaries
+/bin/
+/llama-admin
+/llama-admin-server
+*.exe
+
+# Build output
+/dist/
+
+# Local config and data
+/config.yaml
+/config.local.yaml
+/.env
+*.db
+*.db-wal
+*.db-shm
+/data/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+/vendor/
