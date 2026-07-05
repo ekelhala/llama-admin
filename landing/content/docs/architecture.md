@@ -1,4 +1,8 @@
-# Architecture
+---
+title: "Architecture & design"
+weight: 10
+lead: "Components, request flow and design choices."
+---
 
 ## Overview
 
@@ -36,6 +40,7 @@ llama-admin is a small Go server you deploy on your inference host. It:
 
 ## Status
 
-Pre-implementation. The build is organized into phases tracked under
-[`plans/`](../plans). See [`plans/README.md`](../plans/README.md) for the
-roadmap.
+Early implementation. See the
+[releases](https://github.com/ekelhala/llama-admin/releases) page for current
+builds and the [README](https://github.com/ekelhala/llama-admin#readme) for an
+overview of what works today.

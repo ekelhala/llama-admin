@@ -58,10 +58,9 @@ See the [Makefile](Makefile) for `run`, `test`, `install` and
 
 ## Documentation
 
-- [Architecture & design](docs/architecture.md)
-- [Configuration reference](docs/configuration.md)
-- [Deployment guide](docs/deployment.md)
-- [Implementation roadmap](plans/README.md)
+- [Architecture & design](https://ekelhala.github.io/llama-admin/docs/architecture/)
+- [Configuration reference](https://ekelhala.github.io/llama-admin/docs/configuration/)
+- [Deployment guide](https://ekelhala.github.io/llama-admin/docs/deployment/)
 
 ## License
 

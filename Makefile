@@ -1,4 +1,4 @@
-.PHONY: all build server cli run run-server run-cli test test-race vet fmt lint clean config install install-systemd help
+.PHONY: all build server cli run run-server run-cli test test-race vet fmt lint clean config install install-systemd landing help
 
 # Build metadata. Override on the make command line, e.g.:
 #   make VERSION=v0.1.0 COMMIT=$(git rev-parse --short HEAD)
@@ -55,6 +55,13 @@ lint: vet ## Run golangci-lint if available
 
 clean: ## Remove built binaries
 	rm -rf $(BINDIR)
+
+HUGO ?= hugo
+LANDING ?= landing
+
+landing: ## Build the Hugo landing/docs site into landing/public
+	@command -v $(HUGO) >/dev/null 2>&1 || { echo "hugo not found; install it or set HUGO=/path/to/hugo"; exit 1; }
+	$(HUGO) --gc --minify --source $(LANDING) --destination public
 
 # Copy the example config into place if no config exists yet, then edit it.
 config: ## Create config.yaml from config.example.yaml

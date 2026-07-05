@@ -1,0 +1,55 @@
+{{ define "title" }}{{ .Site.Title }}{{ end }}
+{{ define "body" }}
+<div class="wrap">
+  <header class="hero">
+    <div class="logo">🦙</div>
+    <h1>llama-admin</h1>
+    <p class="tagline">
+      A small Go server you deploy on your inference host. Spawn and supervise
+      <code>llama-server</code> processes, expose an OpenAI-compatible API
+      protected by API keys, and manage everything from a CLI that authenticates
+      users via OAuth.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="{{ .Site.Params.repo }}#readme">Get started</a>
+      <a class="btn" href="{{ .Site.Params.repo }}/releases/latest">Download</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>What it does</h2>
+    <ul class="features">
+      <li>Spawns and supervises one or more <code>llama-server</code> instances</li>
+      <li>Exposes an OpenAI-compatible API (<code>/v1/*</code>) protected by API keys, routing by request <code>model</code> field</li>
+      <li>Management API (<code>/api/v1/*</code>) protected by OAuth-issued session tokens</li>
+      <li>CLI authenticates via OAuth device flow; manages instances, models and API keys</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+    <p><strong>Server</strong> (on the inference host):</p>
+<pre>curl -fsSL {{ .Site.Params.repo }}/releases/download/latest/install-server.sh | sh</pre>
+    <p><strong>CLI</strong> (on your workstation):</p>
+<pre>curl -fsSL {{ .Site.Params.repo }}/releases/download/latest/install-cli.sh | sh</pre>
+    <p>Then point it at your server and log in:</p>
+<pre>llama-admin config set-server https://your-host:8080
+llama-admin auth login</pre>
+    <p>Or <a href="{{ .Site.Params.repo }}#build-from-source">build from source</a> with <code>make build</code>.</p>
+  </section>
+
+  <section>
+    <h2>Documentation</h2>
+    <div class="docs-grid">
+      {{ range (where .Site.RegularPages "Section" "docs").ByParam "weight" }}
+      <a class="doc-card" href="{{ .RelPermalink }}">
+        <div class="title">{{ .Title }}</div>
+        <div class="desc">{{ .Params.lead }}</div>
+      </a>
+      {{ end }}
+    </div>
+  </section>
+
+  {{ partial "footer.html" . }}
+</div>
+{{ end }}

@@ -1,0 +1,20 @@
+{{ define "body" }}
+<div class="wrap">
+  {{ partial "site-header.html" . }}
+  <div class="docs-layout">
+    {{ partial "docs-nav.html" . }}
+    <article class="docs-content">
+      <h1>{{ .Title }}</h1>
+      {{ with .Params.lead }}<p class="lead">{{ . }}</p>{{ end }}
+      {{ if .TableOfContents }}
+        <div class="page-toc">
+          <h4>On this page</h4>
+          {{ .TableOfContents }}
+        </div>
+      {{ end }}
+      {{ .Content }}
+    </article>
+  </div>
+  {{ partial "footer.html" . }}
+</div>
+{{ end }}

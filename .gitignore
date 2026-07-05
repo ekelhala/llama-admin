@@ -27,3 +27,7 @@ Thumbs.db
 
 # Go
 /vendor/
+
+# Hugo (landing site): rendered output in landing/public/ IS committed.
+/landing/resources/
+/landing/.hugo_build.lock

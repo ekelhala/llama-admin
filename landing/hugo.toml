@@ -1,0 +1,29 @@
+# Hugo site for llama-admin's landing + docs.
+# Rendered output is committed to landing/public/ and published via GitHub Pages.
+# Rebuild with: make landing  (or: hugo --gc --minify --destination public)
+
+baseURL = "https://ekelhala.github.io/llama-admin/"
+languageCode = "en-us"
+title = "llama-admin"
+description = "Control server for managing llama.cpp instances and routing OpenAI-compatible requests, administered through a CLI that authenticates users via OAuth."
+
+# Keep pages clean; we render the homepage from a custom layout, docs from Markdown.
+pluralizeListTitles = false
+disableKinds = ["taxonomy", "term", "RSS", "sitemap", "section"]
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.highlight]
+    style = "github-dark"
+    lineNos = false
+    codeFences = true
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 3
+
+[params]
+  repo = "https://github.com/ekelhala/llama-admin"
+  repoPath = "ekelhala/llama-admin"
+  license = "MIT"

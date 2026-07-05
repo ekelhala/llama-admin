@@ -1,0 +1,11 @@
+{{ $page := . }}
+<div class="docs-side">
+  <h3>Docs</h3>
+  <ul>
+    {{ range (where .Site.RegularPages "Section" "docs").ByParam "weight" }}
+      <li>
+        <a href="{{ .RelPermalink }}" class="{{ if eq .RelPermalink $page.RelPermalink }}active{{ end }}">{{ .Title }}</a>
+      </li>
+    {{ end }}
+  </ul>
+</div>

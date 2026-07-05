@@ -1,4 +1,8 @@
-# Deployment
+---
+title: "Deployment guide"
+weight: 30
+lead: "systemd unit, directories and operations."
+---
 
 llama-admin is designed to run as a systemd service on a Linux host that has
 access to a `llama-server` binary and your model files.
@@ -27,7 +31,7 @@ curl -fsSL https://github.com/ekelhala/llama-admin/releases/download/latest/inst
 ```
 
 The installer enables but does not start the service — edit the config first
-(see [configuration.md](configuration.md)):
+(see [configuration]({{< relref "docs/configuration" >}})):
 
 ```sh
 sudo systemctl start llama-admin

@@ -1,7 +1,9 @@
 name: pages
 
-# Publishes the static landing page in /landing to GitHub Pages on every push
-# to main. The site is a single self-contained index.html with no build step.
+# Publishes the Hugo site in /landing to GitHub Pages.
+# Source lives in landing/ (content/, layouts/, assets/); the rendered output is
+# committed to landing/public/ so no build step is required at deploy time.
+# Rebuild locally with: make landing
 #
 # Repo setting required (Settings -> Pages -> Build and deployment -> Source):
 #   "GitHub Actions"
@@ -13,7 +15,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "landing/**"
+      - "landing/public/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -39,7 +41,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: landing
+          path: landing/public
 
       - name: Deploy to GitHub Pages
         id: deployment

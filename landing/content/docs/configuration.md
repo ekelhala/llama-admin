@@ -1,12 +1,16 @@
-# Configuration
+---
+title: "Configuration reference"
+weight: 20
+lead: "YAML file, env vars and overrides."
+---
 
 llama-admin loads its configuration from a YAML file (default `config.yaml`
 in the working directory; override with `LLAMA_ADMIN_CONFIG_PATH`) and
 overlays environment variables on top.
 
 A fully commented reference file ships at
-[`config.example.yaml`](../config.example.yaml). Copy it to `config.yaml`
-and edit to taste:
+[`config.example.yaml`](https://github.com/ekelhala/llama-admin/blob/main/config.example.yaml).
+Copy it to `config.yaml` and edit to taste:
 
 ```sh
 cp config.example.yaml config.yaml
@@ -57,12 +61,12 @@ Env: `LLAMA_ADMIN_BACKEND_LLAMACPP_BINARY_PATH`,
 | `portRange.min`/`.max`  | int              | `8100`/`9000`| Port range allocated to spawned `llama-server` instances.|
 | `onDemandStartTimeout`  | duration         | `30s`        | Time to wait for an on-demand instance to become ready.  |
 | `logRotationEnabled`    | bool             | `true`       | Enable per-instance log rotation.                        |
-| `logRotationMaxSize`     | int (bytes)      | `52428800`   | Max log file size before rotation (50 MiB).              |
-| `logRotationCompress`    | bool             | `true`       | Compress rotated logs.                                   |
-| `timeoutCheckInterval`   | duration         | `10s`        | How often to scan running instances for idle timeouts.   |
-| `enableLRUEviction`      | bool             | `false`      | Evict least-recently-used idle instances at capacity.    |
-| `maxRunningInstances`    | int              | `10`         | Hard cap on concurrent running instances.                |
-| `groupLimits`            | map[string]int   | `{}`         | Optional per-group concurrency caps.                    |
+| `logRotationMaxSize`    | int (bytes)      | `52428800`   | Max log file size before rotation (50 MiB).              |
+| `logRotationCompress`   | bool             | `true`       | Compress rotated logs.                                   |
+| `timeoutCheckInterval`  | duration         | `10s`        | How often to scan running instances for idle timeouts.   |
+| `enableLRUEviction`     | bool             | `false`      | Evict least-recently-used idle instances at capacity.    |
+| `maxRunningInstances`   | int              | `10`         | Hard cap on concurrent running instances.                |
+| `groupLimits`           | map[string]int   | `{}`         | Optional per-group concurrency caps.                    |
 
 Env (prefixed `LLAMA_ADMIN_INSTANCES_`): `PORT_RANGE_MIN`, `PORT_RANGE_MAX`,
 `ON_DEMAND_START_TIMEOUT`, `LOG_ROTATION_ENABLED`, `LOG_ROTATION_MAX_SIZE`,
