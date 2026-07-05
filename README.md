@@ -4,8 +4,6 @@ Control server for managing `llama.cpp` instances and routing OpenAI-compatible
 requests, administered through a CLI that authenticates users via OAuth
 (GitHub by default, extensible to other providers).
 
-## Overview
-
 llama-admin is a small Go server you deploy on your inference host. It:
 
 - Spawns and supervises `llama-server` processes (one or more instances)
@@ -16,32 +14,54 @@ llama-admin is a small Go server you deploy on your inference host. It:
 - Ships a CLI (`llama-admin`) that authenticates the user via OAuth device
   flow and manages instances, models, and API keys
 
-## Status
+## Install
 
-Pre-implementation. The build is organized into phases tracked under
-[`plans/`](plans). See [`plans/README.md`](plans/README.md) for the roadmap.
+### Server (on the inference host)
 
-## Design decisions
+```sh
+curl -fsSL https://github.com/ekelhala/llama-admin/releases/download/latest/install-server.sh | sh
+```
 
-- **Server + CLI only** (no web UI) — all management happens through the CLI.
-- **llama.cpp backend only** initially (multi-backend support deferred).
-- **Local instances only** (remote-node support deferred).
-- **Generalized OAuth** via a `Provider` interface; GitHub is the reference
-  implementation. Adding a provider is a small Go package + a config entry.
-- **Two auth mechanisms:**
-  - Session tokens (OAuth device flow) protect **management** endpoints.
-  - API keys (Argon2id-hashed, per-instance scoping) protect **inference**
-    endpoints, so external OpenAI clients need no OAuth.
-- **Email allowlist** gates who can log in. Seeded from config and extended
-  at runtime via the API.
+This provisions a `llama-admin` system user, installs the binary into
+`/usr/local/bin`, drops the config at `/etc/llama-admin/config.yaml`, creates
+`/var/lib/llama-admin`, and enables (but does not start) the systemd service.
+Edit the config, then:
 
-## Tech stack
+```sh
+sudo systemctl start llama-admin
+journalctl -u llama-admin -f
+```
 
-- Go 1.24+
-- [chi](https://github.com/go-chi/chi) router
-- SQLite (via `mattn/go-sqlite3`)
-- [cobra](https://github.com/spf13/cobra) for the CLI
-- Argon2id for key/token hashing
+### CLI (on your workstation)
+
+```sh
+curl -fsSL https://github.com/ekelhala/llama-admin/releases/download/latest/install-cli.sh | sh
+```
+
+Then point it at your server and log in:
+
+```sh
+llama-admin config set-server https://your-host:8080
+llama-admin auth login
+```
+
+## Build from source
+
+```sh
+git clone https://github.com/ekelhala/llama-admin.git
+cd llama-admin
+make build
+```
+
+See the [Makefile](Makefile) for `run`, `test`, `install` and
+`install-systemd` targets.
+
+## Documentation
+
+- [Architecture & design](docs/architecture.md)
+- [Configuration reference](docs/configuration.md)
+- [Deployment guide](docs/deployment.md)
+- [Implementation roadmap](plans/README.md)
 
 ## License
 
