@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS allowed_emails;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS key_permissions;
+DROP TABLE IF EXISTS api_keys;
+DROP TABLE IF EXISTS instances;
