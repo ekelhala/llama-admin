@@ -39,10 +39,11 @@ var modelsListCmd = &cobra.Command{
 		headers := []string{"NAME", "SOURCE", "SIZE", "PATH"}
 		var rows [][]string
 		for _, m := range models {
+			sizeBytes, _ := toInt64(m["size_bytes"])
 			rows = append(rows, []string{
 				fmt.Sprintf("%v", m["name"]),
 				fmt.Sprintf("%v", m["source"]),
-				fmt.Sprintf("%v", m["size_bytes"]),
+				FormatBytes(sizeBytes),
 				fmt.Sprintf("%v", m["path"]),
 			})
 		}
@@ -129,13 +130,15 @@ var modelsJobsListCmd = &cobra.Command{
 		headers := []string{"JOB_ID", "REPO_ID", "FILENAME", "STATUS", "PROGRESS", "ERROR"}
 		var rows [][]string
 		for _, j := range jobs {
+			progress, _ := j["progress"].(map[string]any)
+			errStr, _ := j["error"].(string)
 			rows = append(rows, []string{
 				fmt.Sprintf("%v", j["job_id"]),
 				fmt.Sprintf("%v", j["repo_id"]),
 				fmt.Sprintf("%v", j["filename"]),
 				fmt.Sprintf("%v", j["status"]),
-				fmt.Sprintf("%v", j["progress"]),
-				fmt.Sprintf("%v", j["error"]),
+				FormatProgress(progress),
+				errStr,
 			})
 		}
 		PrintTable(headers, rows)
