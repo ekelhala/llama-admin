@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
+	innerclient "llama-admin/internal/client"
 )
 
 var instancesCmd = &cobra.Command{
@@ -178,6 +180,12 @@ var instancesStartCmd = &cobra.Command{
 		}
 
 		PrintJSONBytes(data)
+
+		if wait, _ := cmd.Flags().GetBool("wait"); wait {
+			if err := waitForInstanceRunning(c, args[0], waitTimeout(cmd)); err != nil {
+				return err
+			}
+		}
 		return nil
 	},
 }
@@ -218,6 +226,12 @@ var instancesRestartCmd = &cobra.Command{
 		}
 
 		PrintJSONBytes(data)
+
+		if wait, _ := cmd.Flags().GetBool("wait"); wait {
+			if err := waitForInstanceRunning(c, args[0], waitTimeout(cmd)); err != nil {
+				return err
+			}
+		}
 		return nil
 	},
 }
@@ -287,4 +301,56 @@ func init() {
 	instancesCreateCmd.Flags().Int("ctx-size", 0, "context size")
 	instancesCreateCmd.Flags().Int("gpu-layers", 0, "number of GPU layers")
 	instancesLogsCmd.Flags().IntP("lines", "n", 200, "number of log lines")
+
+	// The server starts instances asynchronously and returns 202 Accepted.
+	// --wait makes the CLI poll the instance status until it is running
+	// (or fails) before returning.
+	instancesStartCmd.Flags().Bool("wait", false, "wait for the instance to become healthy before returning")
+	instancesStartCmd.Flags().Duration("timeout", 10*time.Minute, "maximum time to wait when --wait is set")
+	instancesRestartCmd.Flags().Bool("wait", false, "wait for the instance to become healthy before returning")
+	instancesRestartCmd.Flags().Duration("timeout", 10*time.Minute, "maximum time to wait when --wait is set")
+}
+
+// waitTimeout resolves the --timeout flag value for the given command.
+func waitTimeout(cmd *cobra.Command) time.Duration {
+	if t, _ := cmd.Flags().GetDuration("timeout"); t > 0 {
+		return t
+	}
+	return 10 * time.Minute
+}
+
+// waitForInstanceRunning polls the instance status until it reaches a terminal
+// state (running or failed) or the timeout elapses. It mirrors the server-side
+// health wait: the API returns 202 Accepted immediately and the instance
+// transitions through "restarting" before becoming "running".
+func waitForInstanceRunning(c *innerclient.Client, name string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	interval := 500 * time.Millisecond
+
+	for time.Now().Before(deadline) {
+		data, err := c.Get("/api/v1/instances/" + name)
+		if err != nil {
+			return err
+		}
+
+		var inst map[string]any
+		if err := json.Unmarshal(data, &inst); err != nil {
+			return err
+		}
+
+		status, _ := inst["status"].(string)
+		switch status {
+		case "running":
+			PrintSuccess("Instance " + name + " is running")
+			return nil
+		case "failed":
+			return fmt.Errorf("instance %s failed to start", name)
+		case "stopped":
+			return fmt.Errorf("instance %s stopped", name)
+		}
+
+		time.Sleep(interval)
+	}
+
+	return fmt.Errorf("timed out waiting for instance %s to become healthy", name)
 }
