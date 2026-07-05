@@ -43,6 +43,7 @@ func New(id int64, name string, opts *Options, host string, port int, cfg *confi
 	inst := &Instance{
 		ID:        id,
 		Name:      name,
+		RawStatus: StatusStopped,
 		CreatedAt: now,
 		UpdatedAt: now,
 		Opts:      opts,
