@@ -53,6 +53,7 @@ func New(id int64, name string, opts *Options, host string, port int, cfg *confi
 	}
 
 	inst.status = newStatusState(func(newStatus Status) {
+		inst.RawStatus = newStatus
 		inst.UpdatedAt = time.Now().Unix()
 	})
 
@@ -73,11 +74,15 @@ func (i *Instance) Start() error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
-	if i.status.Set(StatusRestarting) != nil {
-		// Status might already be running or transitioning
+	if err := i.status.Set(StatusRestarting); err != nil {
 		current := i.status.Get()
-		if current == StatusRunning {
+		switch current {
+		case StatusRunning:
 			return fmt.Errorf("instance %s is already running", i.Name)
+		case StatusRestarting:
+			return fmt.Errorf("instance %s is already starting", i.Name)
+		default:
+			return fmt.Errorf("cannot start instance %s in state %s: %w", i.Name, current, err)
 		}
 	}
 
@@ -119,19 +124,12 @@ func (i *Instance) Start() error {
 		return fmt.Errorf("start process: %w", err)
 	}
 
-	// Wait for healthy
-	ctx, cancel := context.WithTimeout(context.Background(), i.cfg.Instances.OnDemandStartTimeout)
-	defer cancel()
+	i.PID = i.process.pid()
 
-	if err := i.proxy.WaitForHealthy(ctx, i.Host, i.Port, i.cfg.Instances.OnDemandStartTimeout); err != nil {
-		i.process.stop(5 * time.Second)
-		i.status.Set(StatusFailed)
-		return fmt.Errorf("wait for healthy: %w", err)
-	}
-
-	i.proxy.markHealthy()
-	i.status.Set(StatusRunning)
-
+	// The process is now starting asynchronously. A background waiter
+	// (launched by the manager) polls the health endpoint and
+	// transitions the status to running once healthy, or failed on
+	// timeout. Returning here lets the API respond with Accepted.
 	return nil
 }
 
@@ -159,9 +157,8 @@ func (i *Instance) Stop() error {
 }
 
 func (i *Instance) Restart() error {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
+	// Stop and Start each acquire i.mu themselves; holding the lock
+	// across both would deadlock (sync.Mutex is not reentrant).
 	if err := i.Stop(); err != nil {
 		return err
 	}
@@ -198,6 +195,7 @@ func (i *Instance) MarkRunning(port int) {
 	defer i.mu.Unlock()
 	i.Port = port
 	i.RawStatus = StatusRunning
+	i.status.status = StatusRunning
 	i.proxy.markHealthy()
 }
 
@@ -206,6 +204,19 @@ func (i *Instance) MarkStopped() {
 	defer i.mu.Unlock()
 	i.PID = 0
 	i.RawStatus = StatusStopped
+	i.status.status = StatusStopped
+}
+
+// MarkFailed stops the underlying process (if still running) and marks the
+// instance as failed. It is used by the background health waiter when an
+// instance fails to become healthy within the start timeout.
+func (i *Instance) MarkFailed() {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	_ = i.process.stop(5 * time.Second)
+	i.PID = 0
+	i.RawStatus = StatusFailed
+	i.status.status = StatusFailed
 }
 
 func (i *Instance) ShouldTimeout() bool {

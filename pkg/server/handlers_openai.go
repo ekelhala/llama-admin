@@ -107,27 +107,11 @@ func (h *Handler) OpenAIProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if running, start if on-demand
+	// Only proxy to instances that are already running; starting an
+	// instance is an explicit, asynchronous operation.
 	if inst.Status() != instance.StatusRunning {
-		if inst.Opts != nil && inst.Opts.BackendOptions != nil {
-			if onDemand, ok := inst.Opts.BackendOptions["on_demand"]; ok {
-				if b, ok := onDemand.(bool); ok && b {
-					if _, err := h.Manager.StartInstance(instanceName); err != nil {
-						writeOpenAIError(w, http.StatusInternalServerError, fmt.Sprintf("failed to start instance: %v", err), "internal_error")
-						return
-					}
-				} else {
-					writeOpenAIError(w, http.StatusServiceUnavailable, "instance_not_running", "unavailable")
-					return
-				}
-			} else {
-				writeOpenAIError(w, http.StatusServiceUnavailable, "instance_not_running", "unavailable")
-				return
-			}
-		} else {
-			writeOpenAIError(w, http.StatusServiceUnavailable, "instance_not_running", "unavailable")
-			return
-		}
+		writeOpenAIError(w, http.StatusServiceUnavailable, "instance_not_running", "unavailable")
+		return
 	}
 
 	// Resolve inner model

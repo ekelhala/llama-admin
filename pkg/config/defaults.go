@@ -27,7 +27,7 @@ func defaults() AppConfig {
 				Min: 8100,
 				Max: 9000,
 			},
-			OnDemandStartTimeout: 30 * time.Second,
+			StartTimeout:         10 * time.Minute,
 			LogRotationEnabled:   true,
 			LogRotationMaxSize:   50 * 1024 * 1024,
 			LogRotationCompress:  true,

@@ -40,8 +40,8 @@ instances:
   portRange:
     min: 8100
     max: 9000
-  # Time to wait for an on-demand instance to become ready before giving up.
-  onDemandStartTimeout: 30s
+  # Time to wait for a starting instance to become healthy before giving up.
+  startTimeout: 10m
   # Per-instance log rotation.
   logRotationEnabled: true
   logRotationMaxSize: 52428800   # 50 MiB in bytes

@@ -40,12 +40,6 @@ func (r *registry) List() []*instance.Instance {
 	return result
 }
 
-func (r *registry) markRunning(name string, port int) {
-	if inst, ok := r.Get(name); ok {
-		inst.MarkRunning(port)
-	}
-}
-
 func (r *registry) markStopped(name string) {
 	if inst, ok := r.Get(name); ok {
 		inst.MarkStopped()
