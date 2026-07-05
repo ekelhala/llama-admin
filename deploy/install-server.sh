@@ -126,7 +126,7 @@ else
     install -m 0644 "${tmp}/config.example.yaml" "$SYSCONF/llama-admin/config.example.yaml"
     # Drop a working config.yaml pointing at the right data dir so the service
     # can start without manual editing (OAuth still needs filling in).
-    sed "s|^\(dataDir:.*\$)|dataDir: $DATA_DIR|" \
+    sed "s|^dataDir:.*|dataDir: $DATA_DIR|" \
         "$SYSCONF/llama-admin/config.example.yaml" \
         > "$SYSCONF/llama-admin/config.yaml"
     chmod 0640 "$SYSCONF/llama-admin/config.yaml"
