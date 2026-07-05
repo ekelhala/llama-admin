@@ -87,6 +87,19 @@ var instancesCreateCmd = &cobra.Command{
 		ctxSize, _ := cmd.Flags().GetInt("ctx-size")
 		gpuLayers, _ := cmd.Flags().GetInt("gpu-layers")
 
+		// Resolve the model argument against the catalog of downloaded
+		// models. A bare alias (e.g. "Qwen3.5-9B-Q4_K_M"), the relative
+		// model name, or the bare filename will all resolve to the full
+		// on-disk path. Anything that does not match is passed through
+		// unchanged so absolute paths still work.
+		resolved, err := resolveModelArg(c, model)
+		if err != nil {
+			return err
+		}
+		if resolved != "" {
+			model = resolved
+		}
+
 		opts := map[string]any{
 			"backend_type": "llama_cpp",
 			"backend_options": map[string]any{
@@ -231,7 +244,7 @@ func init() {
 	instancesCmd.AddCommand(instancesDeleteCmd)
 	instancesCmd.AddCommand(instancesLogsCmd)
 
-	instancesCreateCmd.Flags().String("model", "", "model path")
+	instancesCreateCmd.Flags().String("model", "", "model alias, name, filename, or absolute path (resolved against the model catalog)")
 	instancesCreateCmd.Flags().Int("ctx-size", 0, "context size")
 	instancesCreateCmd.Flags().Int("gpu-layers", 0, "number of GPU layers")
 	instancesLogsCmd.Flags().IntP("lines", "n", 200, "number of log lines")

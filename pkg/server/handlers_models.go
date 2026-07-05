@@ -42,12 +42,12 @@ func (h *Handler) ListDownloadJobs(w http.ResponseWriter, r *http.Request) {
 	result := make([]map[string]any, 0, len(jobs))
 	for _, job := range jobs {
 		result = append(result, map[string]any{
-			"job_id":     job.ID,
-			"repo_id":    job.RepoID,
-			"filename":   job.Filename,
-			"status":     string(job.Status),
-			"progress":   job.Progress,
-			"error":      job.Error,
+			"job_id":   job.ID,
+			"repo_id":  job.RepoID,
+			"filename": job.Filename,
+			"status":   string(job.Status),
+			"progress": job.Progress,
+			"error":    job.Error,
 		})
 	}
 
@@ -95,10 +95,11 @@ func (h *Handler) ListModels(w http.ResponseWriter, r *http.Request) {
 	result := make([]map[string]any, 0, len(models))
 	for _, m := range models {
 		result = append(result, map[string]any{
-			"name":        m.Name,
-			"path":        m.Path,
-			"size_bytes":  m.SizeBytes,
-			"source":      m.Source,
+			"name":       m.Name,
+			"alias":      m.Alias,
+			"path":       m.Path,
+			"size_bytes": m.SizeBytes,
+			"source":     m.Source,
 		})
 	}
 

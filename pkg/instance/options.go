@@ -87,8 +87,21 @@ func (o *Options) UnmarshalJSON(data []byte) error {
 	}
 
 	if v, ok := raw["backend_options"]; ok {
-		if b, ok := v.(json.RawMessage); ok {
-			opts, err := UnmarshalFlat(b)
+		var rawMsg []byte
+		switch b := v.(type) {
+		case json.RawMessage:
+			rawMsg = b
+		case nil:
+			// no-op; BackendOptions stays nil and is initialised by ValidateAndApplyDefaults
+		default:
+			data, err := json.Marshal(b)
+			if err != nil {
+				return fmt.Errorf("encode backend_options: %w", err)
+			}
+			rawMsg = data
+		}
+		if rawMsg != nil {
+			opts, err := UnmarshalFlat(rawMsg)
 			if err != nil {
 				return err
 			}
