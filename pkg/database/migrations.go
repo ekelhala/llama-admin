@@ -22,7 +22,7 @@ func RunMigrations(dbPath string) error {
 	}
 	defer os.RemoveAll(dir)
 
-	m, err := migrate.New("file://"+dir, "sqlite3:"+dbPath)
+	m, err := migrate.New("file://"+dir, "sqlite3://"+dbPath)
 	if err != nil {
 		return fmt.Errorf("create migrate instance: %w", err)
 	}
