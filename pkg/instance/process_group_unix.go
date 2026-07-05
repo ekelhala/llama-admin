@@ -3,11 +3,13 @@
 package instance
 
 import (
+	"os/exec"
 	"syscall"
 )
 
-func setProcessGroup(pid int) error {
-	return syscall.Setpgid(pid, 0)
+func prepareProcessGroup(cmd *exec.Cmd) error {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	return nil
 }
 
 func killProcessGroup(pid int) error {
