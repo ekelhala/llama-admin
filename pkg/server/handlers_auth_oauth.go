@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -58,37 +59,18 @@ func (h *Handler) ExchangeDeviceCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Poll for token
-	var tokenResp *auth.TokenResponse
-	pollInterval := 2
-	timeout := 600 // 10 minutes
-	started := time.Now()
-
-	for time.Since(started).Seconds() < float64(timeout) {
-		tr, err := provider.ExchangeDeviceCode(r.Context(), req.DeviceCode)
-		if err != nil {
-			if strings.Contains(err.Error(), "authorization_pending") {
-				time.Sleep(time.Duration(pollInterval) * time.Second)
-				continue
-			}
-			if strings.Contains(err.Error(), "slow_down") {
-				pollInterval *= 2
-				time.Sleep(time.Duration(pollInterval) * time.Second)
-				continue
-			}
-			if strings.Contains(err.Error(), "expired_token") {
-				writeOpenAIError(w, http.StatusBadRequest, "device_code_expired", "invalid_request_error")
-				return
-			}
-			writeError(w, http.StatusInternalServerError, err.Error())
+	// Exchange device code for token (provider polls internally).
+	// Cap the wait so we don't hold the request open forever if GitHub
+	// never returns an expired_token.
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Minute)
+	defer cancel()
+	tokenResp, err := provider.ExchangeDeviceCode(ctx, req.DeviceCode)
+	if err != nil {
+		if strings.Contains(err.Error(), "expired_token") {
+			writeOpenAIError(w, http.StatusBadRequest, "device_code_expired", "invalid_request_error")
 			return
 		}
-		tokenResp = tr
-		break
-	}
-
-	if tokenResp == nil {
-		writeOpenAIError(w, http.StatusBadRequest, "device_code_expired", "invalid_request_error")
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -149,11 +131,11 @@ func (h *Handler) ExchangeDeviceCode(w http.ResponseWriter, r *http.Request) {
 		"session_token": token,
 		"expires_at":    session.ExpiresAt,
 		"user": map[string]any{
-			"id":             user.ID,
-			"username":       user.Username,
-			"email":          user.Email,
-			"avatar_url":     user.AvatarURL,
-			"provider":       user.Provider,
+			"id":         user.ID,
+			"username":   user.Username,
+			"email":      user.Email,
+			"avatar_url": user.AvatarURL,
+			"provider":   user.Provider,
 		},
 	})
 }

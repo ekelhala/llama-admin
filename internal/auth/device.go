@@ -54,18 +54,25 @@ func CompleteDeviceFlow(c *innerclient.Client, provider string) (*DeviceFlowResu
 
 	fmt.Printf("\nPlease visit:\n  %s\n\nAnd enter the code: %s\n\n", dc.VerificationURI, dc.UserCode)
 
-	// Poll for token
+	// Poll for token. The server blocks on a single /token call until the user
+	// authorizes (or the device code expires), but we poll client-side too so
+	// we can respect the device code expiry and surface transport errors.
 	started := time.Now()
 	timeout := time.Duration(dc.ExpiresIn) * time.Second
+	if timeout == 0 {
+		timeout = 15 * time.Minute
+	}
 	interval := time.Duration(dc.Interval) * time.Second
 	if interval < 2*time.Second {
 		interval = 2 * time.Second
 	}
 
+	httpClient := &http.Client{Timeout: 0}
+
 	for time.Since(started) < timeout {
 		time.Sleep(interval)
 
-		resp, err := http.Post(c.BaseURL+"/api/v1/auth/"+provider+"/token", "application/json",
+		resp, err := httpClient.Post(c.BaseURL+"/api/v1/auth/"+provider+"/token", "application/json",
 			strings.NewReader(`{"device_code":"`+dc.DeviceCode+`"}`))
 		if err != nil {
 			continue
@@ -74,11 +81,11 @@ func CompleteDeviceFlow(c *innerclient.Client, provider string) (*DeviceFlowResu
 		resp.Body.Close()
 
 		var result struct {
-			SessionToken string                 `json:"session_token"`
-			ExpiresAt    int64                  `json:"expires_at"`
-			User         map[string]any         `json:"user"`
-			Error        string                 `json:"error"`
-			ErrorDesc    string                 `json:"error_description"`
+			SessionToken string         `json:"session_token"`
+			ExpiresAt    int64          `json:"expires_at"`
+			User         map[string]any `json:"user"`
+			Error        string         `json:"error"`
+			ErrorDesc    string         `json:"error_description"`
 		}
 		if err := json.Unmarshal(body, &result); err != nil {
 			continue
@@ -92,6 +99,9 @@ func CompleteDeviceFlow(c *innerclient.Client, provider string) (*DeviceFlowResu
 		}
 		if result.Error != "" {
 			return nil, fmt.Errorf("device flow failed: %s", result.ErrorDesc)
+		}
+		if result.SessionToken == "" {
+			continue
 		}
 
 		return &DeviceFlowResult{
