@@ -39,10 +39,11 @@ var modelsListCmd = &cobra.Command{
 		headers := []string{"NAME", "SOURCE", "SIZE", "PATH"}
 		var rows [][]string
 		for _, m := range models {
+			sizeBytes, _ := toInt64(m["size_bytes"])
 			rows = append(rows, []string{
 				fmt.Sprintf("%v", m["name"]),
 				fmt.Sprintf("%v", m["source"]),
-				fmt.Sprintf("%v", m["size_bytes"]),
+				FormatBytes(sizeBytes),
 				fmt.Sprintf("%v", m["path"]),
 			})
 		}
