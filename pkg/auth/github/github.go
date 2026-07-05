@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -32,7 +31,6 @@ func New(clientID, clientSecret string, scopes []string) *Provider {
 func (p *Provider) Name() string { return "github" }
 
 func (p *Provider) InitiateDeviceFlow(ctx context.Context) (*auth.DeviceCode, error) {
-	log.Printf("github.InitiateDeviceFlow: client_id=%q scopes=%v", p.config.ClientID, p.config.Scopes)
 	da, err := p.config.DeviceAuth(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("device flow: %w", err)

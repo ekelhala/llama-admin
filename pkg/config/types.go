@@ -62,11 +62,11 @@ type SessionConfig struct {
 }
 
 type ProviderConfig struct {
-	Enabled                     bool
-	ClientID                    string
-	ClientSecret                string
-	Scopes                      []string
-	DeviceAuthorizationEndpoint string
-	TokenEndpoint               string
-	UserEndpoint                string
+	Enabled                     bool     `yaml:"enabled"`
+	ClientID                    string   `yaml:"clientId"`
+	ClientSecret                string   `yaml:"clientSecret"`
+	Scopes                      []string `yaml:"scopes"`
+	DeviceAuthorizationEndpoint string   `yaml:"deviceAuthorizationEndpoint"`
+	TokenEndpoint               string   `yaml:"tokenEndpoint"`
+	UserEndpoint                string   `yaml:"userEndpoint"`
 }
