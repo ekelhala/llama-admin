@@ -45,9 +45,9 @@ func applyEnvOverrides(cfg *AppConfig) {
 			cfg.Instances.PortRange.Max = i
 		}
 	}
-	if v := os.Getenv("LLAMA_ADMIN_INSTANCES_ON_DEMAND_START_TIMEOUT"); v != "" {
+	if v := os.Getenv("LLAMA_ADMIN_INSTANCES_START_TIMEOUT"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {
-			cfg.Instances.OnDemandStartTimeout = d
+			cfg.Instances.StartTimeout = d
 		}
 	}
 	if v := os.Getenv("LLAMA_ADMIN_INSTANCES_LOG_ROTATION_ENABLED"); v != "" {

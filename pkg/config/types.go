@@ -33,7 +33,7 @@ type LlamaCppBackendConfig struct {
 
 type InstancesConfig struct {
 	PortRange            PortRange        `yaml:"portRange"`
-	OnDemandStartTimeout time.Duration    `yaml:"onDemandStartTimeout"`
+	StartTimeout         time.Duration    `yaml:"startTimeout"`
 	LogRotationEnabled   bool             `yaml:"logRotationEnabled"`
 	LogRotationMaxSize   int              `yaml:"logRotationMaxSize"`
 	LogRotationCompress  bool             `yaml:"logRotationCompress"`

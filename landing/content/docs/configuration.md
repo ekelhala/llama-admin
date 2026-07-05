@@ -59,7 +59,7 @@ Env: `LLAMA_ADMIN_BACKEND_LLAMACPP_BINARY_PATH`,
 | Field                   | Type             | Default      | Description                                              |
 |-------------------------|------------------|--------------|----------------------------------------------------------|
 | `portRange.min`/`.max`  | int              | `8100`/`9000`| Port range allocated to spawned `llama-server` instances.|
-| `onDemandStartTimeout`  | duration         | `30s`        | Time to wait for an on-demand instance to become ready.  |
+| `startTimeout`          | duration         | `10m`        | Time to wait for a starting instance to become healthy. |
 | `logRotationEnabled`    | bool             | `true`       | Enable per-instance log rotation.                        |
 | `logRotationMaxSize`    | int (bytes)      | `52428800`   | Max log file size before rotation (50 MiB).              |
 | `logRotationCompress`   | bool             | `true`       | Compress rotated logs.                                   |
@@ -69,7 +69,7 @@ Env: `LLAMA_ADMIN_BACKEND_LLAMACPP_BINARY_PATH`,
 | `groupLimits`           | map[string]int   | `{}`         | Optional per-group concurrency caps.                    |
 
 Env (prefixed `LLAMA_ADMIN_INSTANCES_`): `PORT_RANGE_MIN`, `PORT_RANGE_MAX`,
-`ON_DEMAND_START_TIMEOUT`, `LOG_ROTATION_ENABLED`, `LOG_ROTATION_MAX_SIZE`,
+`START_TIMEOUT`, `LOG_ROTATION_ENABLED`, `LOG_ROTATION_MAX_SIZE`,
 `LOG_ROTATION_COMPRESS`, `TIMEOUT_CHECK_INTERVAL`, `ENABLE_LRU_EVICTION`,
 `MAX_RUNNING_INSTANCES`.
 

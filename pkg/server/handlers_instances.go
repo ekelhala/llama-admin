@@ -103,7 +103,9 @@ func (h *Handler) StartInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, h.instanceToJSON(inst))
+	// The instance process has been launched but is not necessarily
+	// healthy yet; the manager polls health in the background.
+	writeJSON(w, http.StatusAccepted, h.instanceToJSON(inst))
 }
 
 func (h *Handler) StopInstance(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +129,7 @@ func (h *Handler) RestartInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, h.instanceToJSON(inst))
+	writeJSON(w, http.StatusAccepted, h.instanceToJSON(inst))
 }
 
 func (h *Handler) GetInstanceLogs(w http.ResponseWriter, r *http.Request) {

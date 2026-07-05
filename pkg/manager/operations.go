@@ -2,6 +2,7 @@ package manager
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"llama-admin/pkg/instance"
@@ -67,13 +68,32 @@ func (m *manager) StartInstance(name string) (*instance.Instance, error) {
 		return nil, fmt.Errorf("start instance: %w", err)
 	}
 
-	m.registry.markRunning(name, inst.Port)
-
 	if err := m.instanceStore.Save(inst); err != nil {
 		return nil, fmt.Errorf("save instance state: %w", err)
 	}
 
+	// The process has been launched but is not yet healthy. Poll its
+	// health endpoint in the background and transition the status to
+	// running once it responds, or failed on timeout.
+	go m.waitForInstanceHealthy(inst)
+
 	return inst, nil
+}
+
+// waitForInstanceHealthy polls the instance's health endpoint until it
+// becomes healthy or the start timeout elapses, then transitions the
+// instance status accordingly and persists it.
+func (m *manager) waitForInstanceHealthy(inst *instance.Instance) {
+	timeout := m.cfg.Instances.StartTimeout
+	if err := inst.WaitForHealthy(timeout); err != nil {
+		inst.MarkFailed()
+		log.Printf("instance %s failed to become healthy: %v", inst.Name, err)
+	} else {
+		inst.MarkRunning(inst.Port)
+	}
+	if err := m.instanceStore.Save(inst); err != nil {
+		log.Printf("save instance %s state: %v", inst.Name, err)
+	}
 }
 
 func (m *manager) StopInstance(name string) (*instance.Instance, error) {
@@ -119,6 +139,8 @@ func (m *manager) RestartInstance(name string) (*instance.Instance, error) {
 	if err := m.instanceStore.Save(inst); err != nil {
 		return nil, fmt.Errorf("save instance state: %w", err)
 	}
+
+	go m.waitForInstanceHealthy(inst)
 
 	return inst, nil
 }
