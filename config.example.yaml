@@ -1,0 +1,89 @@
+# llama-admin example configuration
+#
+# Copy this file to config.yaml and edit to taste:
+#   cp config.example.yaml config.yaml
+#
+# All values can also be supplied via environment variables prefixed with
+# LLAMA_ADMIN_ (see pkg/config/env.go). Environment variables take precedence
+# over values in this file.
+#
+# Path placeholders of the form ${VAR} or ${VAR:-default} are expanded against
+# the process environment (see pkg/config/expand.go).
+
+# Directory where llama-admin stores its database, instance logs and model
+# cache. Defaults to ${XDG_CONFIG_HOME}/llama-admin or ~/.config/llama-admin.
+dataDir: ${LLAMA_ADMIN_DATA_DIR:-/var/lib/llama-admin}
+
+server:
+  # Bind address. Use 0.0.0.0 to listen on all interfaces.
+  host: 127.0.0.1
+  port: 8080
+  # CORS allowed origins. ["*"] allows any origin.
+  allowedOrigins:
+    - "*"
+  # Expose the Swagger UI at /swagger (if built with the swagger tag).
+  enableSwagger: false
+
+backends:
+  llamaCpp:
+    # Path to the llama-server binary. If empty, llama-admin will look it up
+    # on PATH.
+    binaryPath: /usr/local/bin/llama-server
+    # Where downloaded HuggingFace models are cached.
+    cacheDir: ${LLAMA_ADMIN_DATA_DIR:-/var/lib/llama-admin}/models
+    # Per-download timeout for HuggingFace model downloads.
+    downloadTimeout: 10m
+
+instances:
+  # Port range that llama-admin will allocate to spawned llama-server
+  # instances. The range must be free on the host.
+  portRange:
+    min: 8100
+    max: 9000
+  # Time to wait for an on-demand instance to become ready before giving up.
+  onDemandStartTimeout: 30s
+  # Per-instance log rotation.
+  logRotationEnabled: true
+  logRotationMaxSize: 52428800   # 50 MiB in bytes
+  logRotationCompress: true
+  # How often to scan running instances for idle timeouts.
+  timeoutCheckInterval: 10s
+  # Evict least-recently-used idle instances when MaxRunningInstances is hit.
+  enableLRUEviction: false
+  maxRunningInstances: 10
+  # Optional per-group concurrency caps. Group names are assigned to instances
+  # at creation time.
+  # groupLimits:
+  #   small: 4
+  #   large: 2
+
+database:
+  # SQLite database path. Defaults to <dataDir>/data/llama-admin.db.
+  path: ${LLAMA_ADMIN_DATA_DIR:-/var/lib/llama-admin}/data/llama-admin.db
+
+auth:
+  session:
+    # Time-to-live for OAuth-issued management session tokens.
+    ttl: 24h
+  # OAuth providers. The key is the provider name; only "github" is currently
+  # implemented. Set enabled: true to activate.
+  providers:
+    github:
+      enabled: false
+      # OAuth App client ID and secret. For GitHub, create an OAuth App at
+      # https://github.com/settings/developers. Device flow does not require
+      # a redirect URL.
+      clientId: ${LLAMA_ADMIN_GITHUB_CLIENT_ID}
+      clientSecret: ${LLAMA_ADMIN_GITHUB_CLIENT_SECRET}
+      scopes:
+        - read:user
+        - user:email
+      # Override endpoints for GitHub Enterprise Server. Leave blank for
+      # github.com.
+      # deviceAuthorizationEndpoint: https://github.example.com/login/oauth/device/code
+      # tokenEndpoint: https://github.example.com/login/oauth/access_token
+      # userEndpoint: https://github.example.com/api/v3/user
+  # Email allowlist seeded at startup. Only users with a verified matching
+  # email may log in. The list can be extended at runtime via the API.
+  # allowedEmails:
+  #   - you@example.com

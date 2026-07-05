@@ -1,0 +1,56 @@
+[Unit]
+Description=llama-admin control server
+Documentation=https://github.com/emil/llama-admin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=llama-admin
+Group=llama-admin
+
+# Binary location. Adjust if you install elsewhere (e.g. /usr/local/sbin).
+ExecStart=/usr/local/bin/llama-admin-server
+
+# Path to the YAML config file. Defaults to config.yaml in the working
+# directory if unset.
+Environment=LLAMA_ADMIN_CONFIG_PATH=/etc/llama-admin/config.yaml
+
+# Data directory: database, instance logs and model cache live here.
+Environment=LLAMA_ADMIN_DATA_DIR=/var/lib/llama-admin
+
+# OAuth credentials for the GitHub provider. Set both to enable login.
+# Consider using EnvironmentFile= instead and keep secrets out of the unit.
+# EnvironmentFile=/etc/llama-admin/env
+# Environment=LLAMA_ADMIN_GITHUB_CLIENT_ID=
+# Environment=LLAMA_ADMIN_GITHUB_CLIENT_SECRET=
+
+WorkingDirectory=/var/lib/llama-admin
+
+# Give the server a moment to drain in-flight requests on shutdown.
+TimeoutStopSec=30
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/llama-admin
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

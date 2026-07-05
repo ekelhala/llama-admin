@@ -1,0 +1,86 @@
+name: release
+
+# Builds the llama-admin server and CLI binaries for linux/amd64 on every push
+# to main, then publishes them as a rolling "latest" prerelease. This gives
+# stable download URLs that always point at the most recent main build:
+#
+#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-server
+#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binaries
+        run: |
+          VERSION="dev-$(git rev-parse --short HEAD)"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
+
+          mkdir -p dist
+          # CGO is required: mattn/go-sqlite3 registers its "sqlite3" driver
+          # only when built with cgo. A CGO_ENABLED=0 build compiles but
+          # produces a binary that fails to open the database at runtime.
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
+            go build -trimpath -ldflags "${LDFLAGS}" -o dist/llama-admin-server ./cmd/server
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
+            go build -trimpath -ldflags "${LDFLAGS}" -o dist/llama-admin ./cmd/llama-admin
+
+          # Sanity check.
+          file dist/llama-admin-server dist/llama-admin
+
+          # Bundle the install scripts, example config and systemd unit so
+          # the installers can fetch everything from one stable release URL.
+          cp deploy/install-server.sh    dist/install-server.sh
+          cp deploy/install-cli.sh       dist/install-cli.sh
+          cp config.example.yaml         dist/config.example.yaml
+          cp deploy/llama-admin.service  dist/llama-admin.service
+
+      - name: Publish rolling latest prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Remove any previous rolling release (and its tag) so the new
+          # build replaces it under the same stable "latest" URL.
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+
+          gh release create latest \
+            --target "$GITHUB_SHA" \
+            --title "Latest (main)" \
+            --notes "Automated build of main @ $(git rev-parse --short HEAD).
+
+          These binaries are rebuilt on every push to \`main\` and replace the
+          previous build under the same URL. Treat them as development builds.
+
+          Install the server (binaries + config + systemd unit):
+
+              curl -fsSL https://github.com/ekelhala/llama-admin/releases/download/latest/install-server.sh | sh
+
+          Install just the CLI on your workstation:
+
+              curl -fsSL https://github.com/ekelhala/llama-admin/releases/download/latest/install-cli.sh | sh
+
+          or grab a binary directly:
+
+              curl -fsSL -o llama-admin-server https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-server
+              curl -fsSL -o llama-admin        https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin
+          " \
+            --prerelease \
+            dist/llama-admin-server dist/llama-admin \
+            dist/install-server.sh dist/install-cli.sh \
+            dist/config.example.yaml dist/llama-admin.service
