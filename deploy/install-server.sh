@@ -39,6 +39,7 @@ DATA_DIR="${DATA_DIR:-/var/lib/llama-admin}"
 RELEASE_TAG="${RELEASE_TAG:-latest}"
 
 DOWNLOAD_BASE="https://github.com/${OWNER}/${REPO}/releases/download/${RELEASE_TAG}"
+INSTALLER_URL="${DOWNLOAD_BASE}/install-server.sh"
 
 bail() {
     echo "error: $*" >&2
@@ -62,10 +63,16 @@ esac
 # --- root / sudo ----------------------------------------------------------
 
 if [ "$(id -u)" -ne 0 ]; then
-    # Re-exec ourselves with sudo if available.
+    # Re-exec ourselves with sudo if available. When the script is piped
+    # (`curl | sh`), $0 is the interpreter ("sh"), not a file we can re-exec,
+    # so re-fetch the installer and pipe it into sudo instead.
     if command -v sudo >/dev/null 2>&1; then
         log "not running as root; re-execing with sudo"
-        exec sudo -E sh "$0" "$@"
+        if [ -r "$0" ] && [ "$0" != "sh" ] && [ "$0" != "-sh" ] && [ "$0" != "/bin/sh" ] && [ "$0" != "/usr/bin/sh" ]; then
+            exec sudo -E sh "$0" "$@"
+        else
+            exec curl -fsSL "$INSTALLER_URL" | sudo -E sh
+        fi
     fi
     bail "must be run as root (or via sudo)"
 fi
