@@ -1,11 +1,28 @@
 name: release
 
-# Builds the llama-admin server and CLI binaries for linux/amd64 on every push
-# to main, then publishes them as a rolling "latest" prerelease. This gives
-# stable download URLs that always point at the most recent main build:
+# Builds the llama-admin server and CLI binaries for linux/amd64 and
+# linux/arm64 on every push to main, then publishes them as a rolling
+# "latest" prerelease. This gives stable download URLs that always point
+# at the most recent main build:
 #
-#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-server
-#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin
+#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-server-amd64
+#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-server-arm64
+#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-amd64
+#   https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-arm64
+#
+# Build strategy per architecture:
+#
+#   server  CGO_ENABLED=1  — mattn/go-sqlite3 needs cgo to register the
+#                            "sqlite3" driver. Cross-compiled against glibc
+#                            (amd64) / aarch64 glibc (arm64) using the
+#                            system C compiler and gcc-aarch64-linux-gnu
+#                            respectively. These binaries run on glibc Linux
+#                            hosts (workstations, RPi, Graviton, Ampere).
+#                            They will NOT run inside Termux (Android/bionic).
+#
+#   CLI     CGO_ENABLED=0  — the CLI has no sqlite dependency, so it builds
+#                            as a fully static binary that runs anywhere,
+#                            including Termux on Android phones.
 
 on:
   push:
@@ -17,6 +34,16 @@ permissions:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            goarch: amd64
+            cc: ""
+          - arch: arm64
+            goarch: arm64
+            cc: aarch64-linux-gnu-gcc
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +52,16 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Install arm64 cross-compiler
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
       - name: Build binaries
+        env:
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
         run: |
           VERSION="dev-$(git rev-parse --short HEAD)"
           COMMIT="$(git rev-parse --short HEAD)"
@@ -33,30 +69,47 @@ jobs:
           LDFLAGS="-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildTime=${BUILD_TIME}"
 
           mkdir -p dist
-          # CGO is required: mattn/go-sqlite3 registers its "sqlite3" driver
-          # only when built with cgo. A CGO_ENABLED=0 build compiles but
-          # produces a binary that fails to open the database at runtime.
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-            go build -trimpath -ldflags "${LDFLAGS}" -o dist/llama-admin-server ./cmd/server
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 \
-            go build -trimpath -ldflags "${LDFLAGS}" -o dist/llama-admin ./cmd/llama-admin
 
-          # Sanity check.
-          file dist/llama-admin-server dist/llama-admin
+          # Server: cgo required for sqlite. CC picks the right cross-compiler
+          # for arm64 (empty for amd64 = system gcc).
+          GOOS=linux GOARCH=${{ matrix.goarch }} CGO_ENABLED=1 CC="$CC" \
+            go build -trimpath -ldflags "${LDFLAGS}" -o dist/llama-admin-server-${{ matrix.arch }} ./cmd/server
 
-          # Bundle the install scripts, example config and systemd unit so
-          # the installers can fetch everything from one stable release URL.
+          # CLI: static, no cgo. Runs on glibc Linux and inside Termux.
+          GOOS=linux GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+            go build -trimpath -ldflags "${LDFLAGS}" -o dist/llama-admin-${{ matrix.arch }} ./cmd/llama-admin
+
+          file dist/llama-admin-server-${{ matrix.arch }} dist/llama-admin-${{ matrix.arch }}
+
+      - name: Stage release assets
+        # These shared (arch-independent) assets only need to be uploaded
+        # once, so do it from the amd64 leg.
+        if: matrix.arch == 'amd64'
+        run: |
           cp deploy/install-server.sh    dist/install-server.sh
           cp deploy/install-cli.sh       dist/install-cli.sh
           cp config.example.yaml         dist/config.example.yaml
           cp deploy/llama-admin.service  dist/llama-admin.service
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/*
+          retention-days: 1
+
+  publish:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
       - name: Publish rolling latest prerelease
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Remove any previous rolling release (and its tag) so the new
-          # build replaces it under the same stable "latest" URL.
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
 
           gh release create latest \
@@ -67,20 +120,22 @@ jobs:
           These binaries are rebuilt on every push to \`main\` and replace the
           previous build under the same URL. Treat them as development builds.
 
+          Prebuilt assets for **linux/amd64** and **linux/arm64** are
+          published. The install scripts pick the right one based on
+          \`uname -m\`.
+
           Install the server (binaries + config + systemd unit):
 
               curl -fsSL https://github.com/ekelhala/llama-admin/releases/download/latest/install-server.sh | sh
 
-          Install just the CLI on your workstation:
+          Install just the CLI on your workstation (or in Termux on Android):
 
               curl -fsSL https://github.com/ekelhala/llama-admin/releases/download/latest/install-cli.sh | sh
 
           or grab a binary directly:
 
-              curl -fsSL -o llama-admin-server https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-server
-              curl -fsSL -o llama-admin        https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin
+              curl -fsSL -o llama-admin-server https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-server-amd64
+              curl -fsSL -o llama-admin        https://github.com/ekelhala/llama-admin/releases/download/latest/llama-admin-amd64
           " \
             --prerelease \
-            dist/llama-admin-server dist/llama-admin \
-            dist/install-server.sh dist/install-cli.sh \
-            dist/config.example.yaml dist/llama-admin.service
+            dist/*

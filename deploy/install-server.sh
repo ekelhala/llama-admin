@@ -1,10 +1,17 @@
 #!/bin/sh
 # llama-admin server installer
 #
-# Downloads the latest linux/amd64 build of the llama-admin server binary
-# from the rolling "latest" GitHub release and provisions the system for
-# running it as a systemd service:
+# Downloads the latest build of the llama-admin server binary from the
+# rolling "latest" GitHub release and provisions the system for running it
+# as a systemd service. Picks the right asset (linux/amd64 or linux/arm64)
+# based on `uname -m`.
 #
+# The server is shipped as a cgo (glibc-linked) binary and runs on standard
+# Linux hosts (workstations, Raspberry Pi 4/5, Graviton, Ampere). It will
+# NOT run inside Termux on Android — for that, build from source inside
+# Termux itself.
+#
+# Provisioned:
 #   - creates a dedicated "llama-admin" system user and group
 #   - installs the server binary into $PREFIX/bin
 #   - installs the example config and systemd unit
@@ -56,8 +63,9 @@ log() {
 
 arch="$(uname -m)"
 case "$arch" in
-    x86_64|amd64) : ;;  # supported
-    *) bail "no prebuilt binary for architecture '$arch'; only linux/amd64 is published. Build from source instead: make build"
+    x86_64|amd64)   asset_arch=amd64 ;;
+    aarch64|arm64)  asset_arch=arm64 ;;
+    *) bail "no prebuilt binary for architecture '$arch'; only linux/amd64 and linux/arm64 are published. Build from source instead: make build"
 esac
 
 # --- root / sudo ----------------------------------------------------------
@@ -119,7 +127,7 @@ log "installing server binary into $PREFIX/bin"
 install -d -m 0755 "$PREFIX/bin"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-fetch "${DOWNLOAD_BASE}/llama-admin-server" "${tmp}/llama-admin-server"
+fetch "${DOWNLOAD_BASE}/llama-admin-server-${asset_arch}" "${tmp}/llama-admin-server"
 install -m 0755 "${tmp}/llama-admin-server" "$PREFIX/bin/llama-admin-server"
 
 # --- install config -------------------------------------------------------
