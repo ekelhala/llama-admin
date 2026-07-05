@@ -115,7 +115,7 @@ jobs:
           gh release create latest \
             --target "$GITHUB_SHA" \
             --title "Latest (main)" \
-            --notes "Automated build of main @ $(git rev-parse --short HEAD).
+            --notes "Automated build of main @ ${GITHUB_SHA::7}.
 
           These binaries are rebuilt on every push to \`main\` and replace the
           previous build under the same URL. Treat them as development builds.
