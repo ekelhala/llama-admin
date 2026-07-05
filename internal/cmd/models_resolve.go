@@ -70,8 +70,19 @@ func resolveModelArg(c *client.Client, arg string) (string, error) {
 
 // normalizeModelRef lowercases and trims surrounding whitespace so that
 // alias matching is forgiving of case differences in the CLI argument.
+// Hyphens and underscores are collapsed to the same character because
+// model filenames conventionally use underscores (e.g. "Q4_K_M") while
+// users frequently type the hyphenated form (e.g. "Q4-K-M"); treating them
+// as equivalent lets resolution succeed regardless of which style is used.
 func normalizeModelRef(s string) string {
-	return strings.ToLower(strings.TrimSpace(s))
+	s = strings.ToLower(strings.TrimSpace(s))
+	b := []byte(s)
+	for i, c := range b {
+		if c == '-' {
+			b[i] = '_'
+		}
+	}
+	return string(b)
 }
 
 func asString(v any) string {
