@@ -1,8 +1,13 @@
 #!/bin/sh
 # llama-admin CLI installer
 #
-# Downloads the latest linux/amd64 build of the llama-admin CLI binary from
-# the rolling "latest" GitHub release and installs it into $PREFIX/bin.
+# Downloads the latest build of the llama-admin CLI binary from the rolling
+# "latest" GitHub release and installs it into $PREFIX/bin. Picks the right
+# asset (linux/amd64 or linux/arm64) based on `uname -m`.
+#
+# The CLI is shipped as a static (CGO_ENABLED=0) binary, so the arm64
+# build also runs inside Termux on Android phones.
+#
 # Intended for workstations/admin machines that talk to a llama-admin server
 # running elsewhere — no system user, systemd unit or config is created.
 #
@@ -25,8 +30,8 @@ REPO=llama-admin
 PREFIX="${PREFIX:-/usr/local}"
 RELEASE_TAG="${RELEASE_TAG:-latest}"
 
-DOWNLOAD_URL="https://github.com/${OWNER}/${REPO}/releases/download/${RELEASE_TAG}/llama-admin"
-INSTALLER_URL="https://github.com/${OWNER}/${REPO}/releases/download/${RELEASE_TAG}/install-cli.sh"
+DOWNLOAD_BASE="https://github.com/${OWNER}/${REPO}/releases/download/${RELEASE_TAG}"
+INSTALLER_URL="${DOWNLOAD_BASE}/install-cli.sh"
 
 bail() {
     echo "error: $*" >&2
@@ -43,9 +48,12 @@ log() {
 
 arch="$(uname -m)"
 case "$arch" in
-    x86_64|amd64) : ;;  # supported
-    *) bail "no prebuilt binary for architecture '$arch'; only linux/amd64 is published. Build from source instead: make build"
+    x86_64|amd64)   asset_arch=amd64 ;;
+    aarch64|arm64)  asset_arch=arm64 ;;
+    *) bail "no prebuilt binary for architecture '$arch'; only linux/amd64 and linux/arm64 are published. Build from source instead: make build"
 esac
+
+DOWNLOAD_URL="${DOWNLOAD_BASE}/llama-admin-${asset_arch}"
 
 # --- tools ----------------------------------------------------------------
 
