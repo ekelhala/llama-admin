@@ -130,8 +130,7 @@ func (s *APIKeyStore) GetActiveKeys() ([]APIKey, error) {
 	var keys []APIKey
 	for rows.Next() {
 		var k APIKey
-		var hash string
-		if err := rows.Scan(&k.ID, &hash, &k.Name, &k.UserID, &k.PermissionMode,
+		if err := rows.Scan(&k.ID, &k.KeyHash, &k.Name, &k.UserID, &k.PermissionMode,
 			&k.ExpiresAt, &k.CreatedAt, &k.UpdatedAt, &k.LastUsedAt); err != nil {
 			return nil, err
 		}
