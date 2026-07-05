@@ -27,7 +27,7 @@ var modelsListCmd = &cobra.Command{
 		}
 
 		if outputFormat == "json" {
-			PrintJSON(data)
+			PrintJSONBytes(data)
 			return nil
 		}
 
@@ -84,7 +84,7 @@ var modelsDownloadCmd = &cobra.Command{
 		}
 
 		if outputFormat == "json" {
-			PrintJSON(data)
+			PrintJSONBytes(data)
 			return nil
 		}
 
@@ -119,7 +119,7 @@ var modelsJobsListCmd = &cobra.Command{
 		}
 
 		if outputFormat == "json" {
-			PrintJSON(data)
+			PrintJSONBytes(data)
 			return nil
 		}
 
@@ -162,7 +162,7 @@ var modelsJobsGetCmd = &cobra.Command{
 			return err
 		}
 
-		PrintJSON(data)
+		PrintJSONBytes(data)
 		return nil
 	},
 }

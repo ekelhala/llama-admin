@@ -62,7 +62,7 @@ var apiKeysListCmd = &cobra.Command{
 		}
 
 		if outputFormat == "json" {
-			PrintJSON(data)
+			PrintJSONBytes(data)
 			return nil
 		}
 

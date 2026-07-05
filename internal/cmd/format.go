@@ -13,6 +13,18 @@ func PrintJSON(v any) {
 	fmt.Println(string(data))
 }
 
+// PrintJSONBytes pretty-prints a raw JSON byte slice returned by the API
+// client. If the payload is not valid JSON, it is printed verbatim.
+func PrintJSONBytes(data []byte) {
+	var v any
+	if err := json.Unmarshal(data, &v); err == nil {
+		pretty, _ := json.MarshalIndent(v, "", "  ")
+		fmt.Println(string(pretty))
+		return
+	}
+	fmt.Println(string(data))
+}
+
 func PrintTable(headers []string, rows [][]string) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, strings.Join(headers, "\t"))

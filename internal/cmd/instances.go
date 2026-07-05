@@ -67,9 +67,48 @@ var instancesGetCmd = &cobra.Command{
 			return err
 		}
 
-		PrintJSON(data)
+		var inst map[string]any
+		if err := json.Unmarshal(data, &inst); err != nil {
+			PrintJSONBytes(data)
+			return nil
+		}
+
+		if outputFormat == "json" {
+			PrintJSON(inst)
+			return nil
+		}
+
+		printInstanceDetail(inst)
 		return nil
 	},
+}
+
+func printInstanceDetail(inst map[string]any) {
+	rows := [][]string{
+		{"ID", fmt.Sprintf("%v", inst["id"])},
+		{"Name", fmt.Sprintf("%v", inst["name"])},
+		{"Status", fmt.Sprintf("%v", inst["status"])},
+		{"Host", fmt.Sprintf("%v", inst["host"])},
+		{"Port", fmt.Sprintf("%v", inst["port"])},
+		{"PID", fmt.Sprintf("%v", inst["pid"])},
+		{"Created", fmt.Sprintf("%v", inst["created"])},
+		{"Updated", fmt.Sprintf("%v", inst["updated"])},
+	}
+	if owner, ok := inst["owner_user_id"]; ok {
+		rows = append(rows, []string{"Owner", fmt.Sprintf("%v", owner)})
+	}
+
+	PrintTable([]string{"FIELD", "VALUE"}, rows)
+
+	if opts, ok := inst["options"].(map[string]any); ok && len(opts) > 0 {
+		fmt.Println()
+		fmt.Println("Backend options:")
+		optRows := [][]string{}
+		for k, v := range opts {
+			optRows = append(optRows, []string{k, fmt.Sprintf("%v", v)})
+		}
+		PrintTable([]string{"OPTION", "VALUE"}, optRows)
+	}
 }
 
 var instancesCreateCmd = &cobra.Command{
@@ -118,7 +157,7 @@ var instancesCreateCmd = &cobra.Command{
 			return err
 		}
 
-		PrintJSON(data)
+		PrintJSONBytes(data)
 		return nil
 	},
 }
@@ -138,7 +177,7 @@ var instancesStartCmd = &cobra.Command{
 			return err
 		}
 
-		PrintJSON(data)
+		PrintJSONBytes(data)
 		return nil
 	},
 }
@@ -158,7 +197,7 @@ var instancesStopCmd = &cobra.Command{
 			return err
 		}
 
-		PrintJSON(data)
+		PrintJSONBytes(data)
 		return nil
 	},
 }
@@ -178,7 +217,7 @@ var instancesRestartCmd = &cobra.Command{
 			return err
 		}
 
-		PrintJSON(data)
+		PrintJSONBytes(data)
 		return nil
 	},
 }

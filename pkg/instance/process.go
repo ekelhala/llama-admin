@@ -26,8 +26,8 @@ func (p *processState) start(binaryPath string, args []string, env []string, std
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	if err := setProcessGroup(cmd.Process.Pid); err != nil {
-		return fmt.Errorf("set process group: %w", err)
+	if err := prepareProcessGroup(cmd); err != nil {
+		return fmt.Errorf("prepare process group: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {

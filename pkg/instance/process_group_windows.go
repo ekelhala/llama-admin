@@ -3,10 +3,12 @@
 package instance
 
 import (
+	"os/exec"
 	"syscall"
 )
 
-func setProcessGroup(pid int) error {
+func prepareProcessGroup(cmd *exec.Cmd) error {
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x00000200} // CREATE_NEW_PROCESS_GROUP
 	return nil
 }
 
