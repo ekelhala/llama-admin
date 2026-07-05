@@ -3,10 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"strings"
 
 	client "llama-admin/internal/client"
+	"llama-admin/pkg/models"
 )
 
 // resolveModelArg resolves a user-supplied --model value to a concrete
@@ -22,7 +21,6 @@ import (
 // empty string so the caller can fall back to passing the value through
 // unchanged (preserving backward compatibility with absolute paths).
 func resolveModelArg(c *client.Client, arg string) (string, error) {
-	arg = strings.TrimSpace(arg)
 	if arg == "" {
 		return "", nil
 	}
@@ -34,55 +32,25 @@ func resolveModelArg(c *client.Client, arg string) (string, error) {
 		return "", nil
 	}
 
-	var models []map[string]any
-	if err := json.Unmarshal(data, &models); err != nil {
+	var rawModels []map[string]any
+	if err := json.Unmarshal(data, &rawModels); err != nil {
 		return "", fmt.Errorf("parse model catalog: %w", err)
 	}
 
-	argNorm := normalizeModelRef(arg)
-	for _, m := range models {
+	catalog := make([]models.ModelFileInfo, 0, len(rawModels))
+	for _, m := range rawModels {
 		path, _ := m["path"].(string)
 		if path == "" {
 			continue
 		}
-		if path == arg {
-			return path, nil
-		}
-		for _, ref := range []string{
-			asString(m["alias"]),
-			asString(m["name"]),
-			filepath.Base(asString(m["name"])),
-			strings.TrimSuffix(filepath.Base(asString(m["name"])), ".gguf"),
-			filepath.Base(path),
-			strings.TrimSuffix(filepath.Base(path), ".gguf"),
-		} {
-			if ref == "" {
-				continue
-			}
-			if normalizeModelRef(ref) == argNorm {
-				return path, nil
-			}
-		}
+		catalog = append(catalog, models.ModelFileInfo{
+			Name:  asString(m["name"]),
+			Alias: asString(m["alias"]),
+			Path:  path,
+		})
 	}
 
-	return "", nil
-}
-
-// normalizeModelRef lowercases and trims surrounding whitespace so that
-// alias matching is forgiving of case differences in the CLI argument.
-// Hyphens and underscores are collapsed to the same character because
-// model filenames conventionally use underscores (e.g. "Q4_K_M") while
-// users frequently type the hyphenated form (e.g. "Q4-K-M"); treating them
-// as equivalent lets resolution succeed regardless of which style is used.
-func normalizeModelRef(s string) string {
-	s = strings.ToLower(strings.TrimSpace(s))
-	b := []byte(s)
-	for i, c := range b {
-		if c == '-' {
-			b[i] = '_'
-		}
-	}
-	return string(b)
+	return models.ResolveModelArg(catalog, arg), nil
 }
 
 func asString(v any) string {

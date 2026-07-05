@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"llama-admin/pkg/instance"
+	"llama-admin/pkg/models"
 )
 
 func (m *manager) CreateInstance(name string, opts *instance.Options) (*instance.Instance, error) {
@@ -63,6 +64,8 @@ func (m *manager) StartInstance(name string) (*instance.Instance, error) {
 	if inst.Status() == instance.StatusRunning {
 		return inst, nil
 	}
+
+	m.resolveInstanceModel(inst)
 
 	if err := inst.Start(); err != nil {
 		return nil, fmt.Errorf("start instance: %w", err)
@@ -132,10 +135,11 @@ func (m *manager) RestartInstance(name string) (*instance.Instance, error) {
 		return nil, fmt.Errorf("instance %q not found", name)
 	}
 
+	m.resolveInstanceModel(inst)
+
 	if err := inst.Restart(); err != nil {
 		return nil, fmt.Errorf("restart instance: %w", err)
 	}
-
 	if err := m.instanceStore.Save(inst); err != nil {
 		return nil, fmt.Errorf("save instance state: %w", err)
 	}
@@ -204,4 +208,32 @@ func (m *manager) GetInstanceLogs(name string, lines int) (string, error) {
 	}
 
 	return inst.Logs(lines)
+}
+
+// resolveInstanceModel re-resolves the instance's configured model reference
+// against the on-disk model catalog just before launch. This corrects model
+// paths that were stored with the wrong separator style (hyphens vs
+// underscores), mistyped aliases, or stale paths from before a model was
+// re-downloaded. If the catalog is unavailable or the reference does not
+// match any entry, the stored value is left untouched so absolute paths
+// that live outside the catalog still work.
+func (m *manager) resolveInstanceModel(inst *instance.Instance) {
+	if m.modelMgr == nil || inst.Opts == nil || inst.Opts.BackendOptions == nil {
+		return
+	}
+	raw, ok := inst.Opts.BackendOptions["model"].(string)
+	if !ok || raw == "" {
+		return
+	}
+
+	catalog, err := m.modelMgr.ListModels()
+	if err != nil {
+		log.Printf("resolve model for %s: catalog unavailable: %v", inst.Name, err)
+		return
+	}
+
+	if resolved := models.ResolveModelArg(catalog, raw); resolved != "" && resolved != raw {
+		inst.Opts.BackendOptions["model"] = resolved
+		log.Printf("resolved model for %s: %q -> %q", inst.Name, raw, resolved)
+	}
 }

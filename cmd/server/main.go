@@ -61,7 +61,13 @@ func main() {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	mgr := manager.New(cfg, db)
+	// Setup model manager (constructed before the instance manager so the
+	// latter can resolve model references against the on-disk catalog at
+	// start time).
+	modelMgr := models.NewManager(cfg, version)
+	defer modelMgr.Close()
+
+	mgr := manager.New(cfg, db, modelMgr)
 
 	// Setup OAuth providers
 	registry := auth.NewProviderRegistry()
@@ -76,10 +82,6 @@ func main() {
 			log.Fatalf("unknown OAuth provider: %s", name)
 		}
 	}
-
-	// Setup model manager
-	modelMgr := models.NewManager(cfg, version)
-	defer modelMgr.Close()
 
 	h := server.NewHandler(cfg, db, mgr, registry, modelMgr)
 	r := server.SetupRouter(h, cfg)

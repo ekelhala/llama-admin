@@ -8,6 +8,7 @@ import (
 	"llama-admin/pkg/config"
 	"llama-admin/pkg/database"
 	"llama-admin/pkg/instance"
+	"llama-admin/pkg/models"
 )
 
 type InstanceManager interface {
@@ -30,15 +31,17 @@ type manager struct {
 	db            *sql.DB
 	instanceStore *database.InstanceStore
 	cfg           *config.AppConfig
+	modelMgr      *models.Manager
 }
 
-func New(cfg *config.AppConfig, db *sql.DB) *manager {
+func New(cfg *config.AppConfig, db *sql.DB, modelMgr *models.Manager) *manager {
 	m := &manager{
 		registry:      newRegistry(),
 		portAllocator: newPortAllocator(cfg.Instances.PortRange.Min, cfg.Instances.PortRange.Max),
 		db:            db,
 		instanceStore: database.NewInstanceStore(db),
 		cfg:           cfg,
+		modelMgr:      modelMgr,
 	}
 
 	m.loadInstances()
