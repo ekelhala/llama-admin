@@ -3,62 +3,63 @@ package config
 import "time"
 
 type AppConfig struct {
-	Server    ServerConfig
-	Backends  BackendConfig
-	Instances InstancesConfig
-	Database  DatabaseConfig
-	Auth      AuthConfig
-	DataDir   string
-	Version   string
-	Commit    string
-	BuildTime string
+	Server    ServerConfig    `yaml:"server"`
+	Backends  BackendConfig   `yaml:"backends"`
+	Instances InstancesConfig `yaml:"instances"`
+	Database  DatabaseConfig  `yaml:"database"`
+	Auth      AuthConfig      `yaml:"auth"`
+	DataDir   string          `yaml:"dataDir"`
+	Version   string          `yaml:"-"`
+	Commit    string          `yaml:"-"`
+	BuildTime string          `yaml:"-"`
 }
 
 type ServerConfig struct {
-	Host           string
-	Port           int
-	AllowedOrigins []string
-	EnableSwagger  bool
+	Host           string   `yaml:"host"`
+	Port           int      `yaml:"port"`
+	AllowedOrigins []string `yaml:"allowedOrigins"`
+	EnableSwagger  bool     `yaml:"enableSwagger"`
 }
 
 type BackendConfig struct {
-	LlamaCpp LlamaCppBackendConfig
+	LlamaCpp LlamaCppBackendConfig `yaml:"llamaCpp"`
 }
 
 type LlamaCppBackendConfig struct {
-	BinaryPath      string
-	CacheDir        string
-	DownloadTimeout time.Duration
+	BinaryPath      string        `yaml:"binaryPath"`
+	CacheDir        string        `yaml:"cacheDir"`
+	DownloadTimeout time.Duration `yaml:"downloadTimeout"`
 }
 
 type InstancesConfig struct {
-	PortRange            PortRange
-	OnDemandStartTimeout time.Duration
-	LogRotationEnabled   bool
-	LogRotationMaxSize   int
-	LogRotationCompress  bool
-	TimeoutCheckInterval time.Duration
-	EnableLRUEviction    bool
-	MaxRunningInstances  int
-	GroupLimits          map[string]int
+	PortRange            PortRange        `yaml:"portRange"`
+	OnDemandStartTimeout time.Duration    `yaml:"onDemandStartTimeout"`
+	LogRotationEnabled   bool             `yaml:"logRotationEnabled"`
+	LogRotationMaxSize   int              `yaml:"logRotationMaxSize"`
+	LogRotationCompress  bool             `yaml:"logRotationCompress"`
+	TimeoutCheckInterval time.Duration    `yaml:"timeoutCheckInterval"`
+	EnableLRUEviction    bool             `yaml:"enableLRUEviction"`
+	MaxRunningInstances  int              `yaml:"maxRunningInstances"`
+	GroupLimits          map[string]int   `yaml:"groupLimits"`
 }
 
 type PortRange struct {
-	Min, Max int
+	Min int `yaml:"min"`
+	Max int `yaml:"max"`
 }
 
 type DatabaseConfig struct {
-	Path string
+	Path string `yaml:"path"`
 }
 
 type AuthConfig struct {
-	Session       SessionConfig
-	Providers     map[string]ProviderConfig
-	AllowedEmails []string
+	Session       SessionConfig               `yaml:"session"`
+	Providers     map[string]ProviderConfig   `yaml:"providers"`
+	AllowedEmails []string                    `yaml:"allowedEmails"`
 }
 
 type SessionConfig struct {
-	TTL time.Duration
+	TTL time.Duration `yaml:"ttl"`
 }
 
 type ProviderConfig struct {
