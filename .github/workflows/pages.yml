@@ -1,0 +1,46 @@
+name: pages
+
+# Publishes the static landing page in /landing to GitHub Pages on every push
+# to main. The site is a single self-contained index.html with no build step.
+#
+# Repo setting required (Settings -> Pages -> Build and deployment -> Source):
+#   "GitHub Actions"
+#
+# The page will be live at:
+#   https://ekelhala.github.io/llama-admin/
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent Pages deployment.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: landing
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
