@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -124,34 +125,25 @@ var instancesCreateCmd = &cobra.Command{
 		}
 
 		name := args[0]
-		model, _ := cmd.Flags().GetString("model")
-		ctxSize, _ := cmd.Flags().GetInt("ctx-size")
-		gpuLayers, _ := cmd.Flags().GetInt("gpu-layers")
+		modelAlias, _ := cmd.Flags().GetString("model-alias")
 
-		// Resolve the model argument against the catalog of downloaded
-		// models. A bare alias (e.g. "Qwen3.5-9B-Q4_K_M"), the relative
-		// model name, or the bare filename will all resolve to the full
-		// on-disk path. Anything that does not match is passed through
-		// unchanged so absolute paths still work.
-		resolved, err := resolveModelArg(c, model)
-		if err != nil {
-			return err
-		}
-		if resolved != "" {
-			model = resolved
+		paramFlags, _ := cmd.Flags().GetStringArray("param")
+		paramMap := make(map[string]string)
+		for _, p := range paramFlags {
+			if p == "" {
+				continue
+			}
+			kv := strings.SplitN(p, "=", 2)
+			if len(kv) == 2 {
+				paramMap[kv[0]] = kv[1]
+			} else {
+				paramMap[kv[0]] = ""
+			}
 		}
 
 		opts := map[string]any{
-			"backend_type": "llama_cpp",
-			"backend_options": map[string]any{
-				"model": model,
-			},
-		}
-		if ctxSize > 0 {
-			opts["backend_options"].(map[string]any)["ctx_size"] = ctxSize
-		}
-		if gpuLayers > 0 {
-			opts["backend_options"].(map[string]any)["n_gpu_layers"] = gpuLayers
+			"model_alias": modelAlias,
+			"params":      paramMap,
 		}
 
 		data, err := c.Post("/api/v1/instances/"+name, opts)
@@ -297,9 +289,8 @@ func init() {
 	instancesCmd.AddCommand(instancesDeleteCmd)
 	instancesCmd.AddCommand(instancesLogsCmd)
 
-	instancesCreateCmd.Flags().String("model", "", "model alias, name, filename, or absolute path (resolved against the model catalog)")
-	instancesCreateCmd.Flags().Int("ctx-size", 0, "context size")
-	instancesCreateCmd.Flags().Int("gpu-layers", 0, "number of GPU layers")
+	instancesCreateCmd.Flags().String("model-alias", "", "model alias (must be registered first)")
+	instancesCreateCmd.Flags().StringArray("param", []string{}, "parameter in key=value form (repeatable; omit value for boolean flags)")
 	instancesLogsCmd.Flags().IntP("lines", "n", 200, "number of log lines")
 
 	// The server starts instances asynchronously and returns 202 Accepted.

@@ -1,58 +1,67 @@
 package instance
 
 import (
+	"encoding/json"
 	"testing"
 )
 
-func TestOptionsUnmarshalJSON_BackendOptionsFromMap(t *testing.T) {
-	// Regression test: when JSON is decoded via Options.UnmarshalJSON, the
-	// nested backend_options object arrives as map[string]any (not
-	// json.RawMessage). The handler must still populate BackendOptions so
-	// that backend validation can find the "model" field.
-	body := []byte(`{"backend_type":"llama_cpp","backend_options":{"model":"/tmp/model.gguf","ctx_size":4096}}`)
-
-	var o Options
-	if err := o.UnmarshalJSON(body); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-
-	if err := o.ValidateAndApplyDefaults(); err != nil {
-		t.Fatalf("validate: %v", err)
-	}
-
-	if got, _ := o.BackendOptions["model"].(string); got != "/tmp/model.gguf" {
-		t.Fatalf("model = %q, want /tmp/model.gguf; BackendOptions=%v", got, o.BackendOptions)
+func TestOptionsValidate_RequiredModelAlias(t *testing.T) {
+	o := &Options{Params: map[string]string{}}
+	err := o.Validate()
+	if err == nil {
+		t.Fatal("expected error for missing model_alias")
 	}
 }
 
-func TestOptionsUnmarshalJSON_RoundTrip(t *testing.T) {
-	body := []byte(`{"backend_type":"llama_cpp","backend_options":{"model":"/tmp/x.gguf","n_gpu_layers":4}}`)
-
-	var o Options
-	if err := o.UnmarshalJSON(body); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+func TestOptionsValidate_Valid(t *testing.T) {
+	o := &Options{
+		ModelAlias: "qwen3-9b",
+		Params:     map[string]string{"ctx-size": "8192"},
+		Env:        map[string]string{"CUDA_VISIBLE_DEVICES": "0"},
 	}
-	if err := o.ValidateAndApplyDefaults(); err != nil {
-		t.Fatalf("validate: %v", err)
+	err := o.Validate()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestOptionsValidate_BlockedParam(t *testing.T) {
+	o := &Options{
+		ModelAlias: "qwen3-9b",
+		Params:     map[string]string{"model": "/path/to/model.gguf"},
+	}
+	err := o.Validate()
+	if err == nil {
+		t.Fatal("expected error for blocked param 'model'")
+	}
+}
+
+func TestOptions_RoundTrip(t *testing.T) {
+	autoRestart := true
+	original := &Options{
+		ModelAlias:  "qwen3-9b",
+		Params:      map[string]string{"ctx-size": "8192", "flash-attn": ""},
+		Env:         map[string]string{"KEY": "val"},
+		AutoRestart: &autoRestart,
 	}
 
-	out, err := o.MarshalJSON()
+	data, err := json.Marshal(original)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if !contains(string(out), `"/tmp/x.gguf"`) {
-		t.Fatalf("marshalled output missing model: %s", out)
-	}
-	if !contains(string(out), `"n_gpu_layers":4`) {
-		t.Fatalf("marshalled output missing n_gpu_layers: %s", out)
-	}
-}
 
-func contains(haystack, needle string) bool {
-	for i := 0; i+len(needle) <= len(haystack); i++ {
-		if haystack[i:i+len(needle)] == needle {
-			return true
-		}
+	var decoded Options
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
 	}
-	return false
+
+	if decoded.ModelAlias != original.ModelAlias {
+		t.Errorf("model_alias = %q, want %q", decoded.ModelAlias, original.ModelAlias)
+	}
+	if decoded.Params["ctx-size"] != "8192" {
+		t.Errorf("params[ctx-size] = %q, want 8192", decoded.Params["ctx-size"])
+	}
+	if decoded.AutoRestart == nil || *decoded.AutoRestart != true {
+		t.Errorf("auto_restart = %v, want true", decoded.AutoRestart)
+	}
 }

@@ -86,6 +86,12 @@ func SetupRouter(h *Handler, cfg *config.AppConfig) http.Handler {
 			r.Get("/download/jobs/{id}", h.GetDownloadJob)
 			r.Delete("/download/jobs/{id}", h.CancelDownloadJob)
 			r.Get("/", h.ListModels)
+			r.Post("/", h.RegisterModel)
+			r.Get("/files", h.ListModelFiles)
+			r.Route("/{alias}", func(r chi.Router) {
+				r.Get("/", h.GetModel)
+				r.Delete("/", h.DeleteModel)
+			})
 		})
 	})
 
