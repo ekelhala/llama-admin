@@ -64,7 +64,8 @@ func main() {
 	// Setup model manager (constructed before the instance manager so the
 	// latter can resolve model references against the on-disk catalog at
 	// start time).
-	modelMgr := models.NewManager(cfg, version)
+	modelStore := database.NewModelStore(db)
+	modelMgr := models.NewManager(cfg, version, modelStore)
 	defer modelMgr.Close()
 
 	mgr := manager.New(cfg, db, modelMgr)

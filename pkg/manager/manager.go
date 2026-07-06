@@ -57,7 +57,7 @@ func (m *manager) loadInstances() {
 
 	for _, inst := range instances {
 		// Recreate instance with internal fields
-		newInst, err := instance.New(inst.ID, inst.Name, inst.Opts, "127.0.0.1", 0, m.cfg)
+		newInst, err := instance.New(inst.ID, inst.Name, inst.Opts, "127.0.0.1", 0, m.cfg, nil)
 		if err != nil {
 			log.Printf("warning: failed to recreate instance %s: %v", inst.Name, err)
 			continue
@@ -67,15 +67,8 @@ func (m *manager) loadInstances() {
 		newInst.UpdatedAt = inst.UpdatedAt
 		newInst.OwnerUserID = inst.OwnerUserID
 
-		// Restore port
-		if inst.Opts != nil && inst.Opts.BackendOptions != nil {
-			if port, ok := inst.Opts.BackendOptions["port"]; ok {
-				if p, ok := port.(int); ok && p != 0 {
-					m.portAllocator.MarkAllocated(p, inst.Name)
-					newInst.Port = p
-				}
-			}
-		}
+		// Port is no longer stored in options (was in BackendOptions["port"]).
+		// A new port will be allocated when the instance is started.
 
 		m.registry.Add(newInst)
 

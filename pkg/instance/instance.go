@@ -10,6 +10,9 @@ import (
 	"llama-admin/pkg/config"
 )
 
+// ModelResolver resolves a model alias to a filesystem path.
+type ModelResolver func(alias string) (string, error)
+
 type Instance struct {
 	ID          int64
 	Name        string
@@ -22,16 +25,17 @@ type Instance struct {
 	PID         int
 	OwnerUserID *int64
 
-	mu         sync.Mutex
-	status     *statusState
-	process    *processState
-	proxy      *proxyState
-	logger     *Logger
-	cfg        *config.AppConfig
+	mu            sync.Mutex
+	status        *statusState
+	process       *processState
+	proxy         *proxyState
+	logger        *Logger
+	cfg           *config.AppConfig
+	modelResolver ModelResolver
 }
 
-func New(id int64, name string, opts *Options, host string, port int, cfg *config.AppConfig) (*Instance, error) {
-	if err := opts.ValidateAndApplyDefaults(); err != nil {
+func New(id int64, name string, opts *Options, host string, port int, cfg *config.AppConfig, resolver ModelResolver) (*Instance, error) {
+	if err := opts.Validate(); err != nil {
 		return nil, fmt.Errorf("validate options: %w", err)
 	}
 
@@ -50,6 +54,7 @@ func New(id int64, name string, opts *Options, host string, port int, cfg *confi
 		Host:      host,
 		Port:      port,
 		cfg:       cfg,
+		modelResolver: resolver,
 	}
 
 	inst.status = newStatusState(func(newStatus Status) {
@@ -86,27 +91,37 @@ func (i *Instance) Start() error {
 		}
 	}
 
-	// Build command args
-	args := []string{}
-	if model, ok := i.Opts.BackendOptions["model"]; ok {
-		if m, ok := model.(string); ok && m != "" {
-			args = append(args, fmt.Sprintf("--model=%s", m))
+	// Resolve model alias to filename
+	filename := ""
+	if i.modelResolver != nil {
+		var err error
+		filename, err = i.modelResolver(i.Opts.ModelAlias)
+		if err != nil {
+			i.status.Set(StatusFailed)
+			return fmt.Errorf("resolve model alias %q: %w", i.Opts.ModelAlias, err)
 		}
 	}
-	args = append(args, fmt.Sprintf("--host=%s", i.Host))
+	if filename == "" {
+		i.status.Set(StatusFailed)
+		return fmt.Errorf("model alias is required but not set")
+	}
+
+	// Build command args
+	args := []string{
+		fmt.Sprintf("--model=%s", filename),
+		fmt.Sprintf("--host=%s", i.Host),
+	}
 	if i.Port != 0 {
 		args = append(args, fmt.Sprintf("--port=%d", i.Port))
 	}
-	if ctxSize, ok := i.Opts.BackendOptions["ctx_size"]; ok {
-		if c, ok := ctxSize.(int); ok && c != 0 {
-			args = append(args, fmt.Sprintf("--ctx-size=%d", c))
-		}
+
+	// Sanitize and append user params
+	paramArgs, err := SanitizeParams(i.Opts.Params)
+	if err != nil {
+		i.status.Set(StatusFailed)
+		return fmt.Errorf("sanitize params: %w", err)
 	}
-	if ngpu, ok := i.Opts.BackendOptions["n_gpu_layers"]; ok {
-		if n, ok := ngpu.(int); ok && n != 0 {
-			args = append(args, fmt.Sprintf("--n-gpu-layers=%d", n))
-		}
-	}
+	args = append(args, paramArgs...)
 
 	// Build environment
 	binaryPath := i.cfg.Backends.LlamaCpp.BinaryPath
@@ -115,7 +130,7 @@ func (i *Instance) Start() error {
 	}
 
 	env := append(os.Environ(), "LLAMA_CACHE="+i.cfg.Backends.LlamaCpp.CacheDir)
-	for k, v := range i.Opts.Environment {
+	for k, v := range i.Opts.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
