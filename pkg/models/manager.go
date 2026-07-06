@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"llama-admin/pkg/config"
+	"llama-admin/pkg/database"
 )
 
 type Manager struct {
@@ -16,10 +17,11 @@ type Manager struct {
 	timeout    time.Duration
 	version    string
 	cfg        *config.AppConfig
+	modelStore *database.ModelStore
 	mu         sync.Mutex
 }
 
-func NewManager(cfg *config.AppConfig, version string) *Manager {
+func NewManager(cfg *config.AppConfig, version string, modelStore *database.ModelStore) *Manager {
 	return &Manager{
 		downloader: NewDownloader(cfg.Backends.LlamaCpp.CacheDir, version, cfg.Backends.LlamaCpp.DownloadTimeout),
 		registry:   NewJobRegistry(),
@@ -27,6 +29,7 @@ func NewManager(cfg *config.AppConfig, version string) *Manager {
 		timeout:    cfg.Backends.LlamaCpp.DownloadTimeout,
 		version:    version,
 		cfg:        cfg,
+		modelStore: modelStore,
 	}
 }
 
@@ -61,8 +64,40 @@ func (m *Manager) CancelJob(id string) error {
 	return nil
 }
 
-func (m *Manager) ListModels() ([]ModelFileInfo, error) {
-	return ScanModels(m.cacheDir)
+func (m *Manager) RegisterModel(alias, filename string, sizeBytes int64) (*database.Model, error) {
+	mu := &database.Model{
+		Alias:     alias,
+		Filename:  filename,
+		SizeBytes: sizeBytes,
+	}
+	if err := m.modelStore.Save(mu); err != nil {
+		return nil, fmt.Errorf("register model: %w", err)
+	}
+	return mu, nil
+}
+
+func (m *Manager) GetModel(alias string) (*database.Model, error) {
+	return m.modelStore.GetByAlias(alias)
+}
+
+func (m *Manager) ListModels() ([]*database.Model, error) {
+	return m.modelStore.List()
+}
+
+func (m *Manager) DeleteModel(alias string) error {
+	return m.modelStore.Delete(alias)
+}
+
+func (m *Manager) ResolveAlias(alias string) (string, error) {
+	mod, err := m.modelStore.GetByAlias(alias)
+	if err != nil {
+		return "", err
+	}
+	return mod.Filename, nil
+}
+
+func (m *Manager) ListFiles() ([]ModelFileInfo, error) {
+	return ScanModelFiles(m.cacheDir)
 }
 
 func (m *Manager) Close() {

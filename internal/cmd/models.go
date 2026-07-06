@@ -53,6 +53,107 @@ var modelsListCmd = &cobra.Command{
 	},
 }
 
+var modelsRegisterCmd = &cobra.Command{
+	Use:   "register <alias> <filename>",
+	Short: "Register a model alias -> filename mapping",
+	Args:  cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := GetClient()
+		if err != nil {
+			return err
+		}
+
+		data, err := c.Post("/api/v1/models", map[string]any{
+			"alias":    args[0],
+			"filename": args[1],
+		})
+		if err != nil {
+			return err
+		}
+
+		PrintJSONBytes(data)
+		return nil
+	},
+}
+
+var modelsGetCmd = &cobra.Command{
+	Use:   "get <alias>",
+	Short: "Get a model by alias",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := GetClient()
+		if err != nil {
+			return err
+		}
+
+		data, err := c.Get("/api/v1/models/" + args[0])
+		if err != nil {
+			return err
+		}
+
+		PrintJSONBytes(data)
+		return nil
+	},
+}
+
+var modelsDeleteCmd = &cobra.Command{
+	Use:   "delete <alias>",
+	Short: "Delete a model by alias",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := GetClient()
+		if err != nil {
+			return err
+		}
+
+		_, err = c.Delete("/api/v1/models/" + args[0])
+		if err != nil {
+			return err
+		}
+
+		PrintSuccess("Model deleted")
+		return nil
+	},
+}
+
+var modelsFilesCmd = &cobra.Command{
+	Use:   "files",
+	Short: "List raw disk-scanned GGUF files",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := GetClient()
+		if err != nil {
+			return err
+		}
+
+		data, err := c.Get("/api/v1/models/files")
+		if err != nil {
+			return err
+		}
+
+		if outputFormat == "json" {
+			PrintJSONBytes(data)
+			return nil
+		}
+
+		var files []map[string]any
+		if err := json.Unmarshal(data, &files); err != nil {
+			return err
+		}
+
+		headers := []string{"FILENAME", "SIZE"}
+		var rows [][]string
+		for _, f := range files {
+			sizeBytes, _ := toInt64(f["size_bytes"])
+			rows = append(rows, []string{
+				fmt.Sprintf("%v", f["filename"]),
+				FormatBytes(sizeBytes),
+			})
+		}
+		PrintTable(headers, rows)
+		return nil
+	},
+}
+
 var modelsDownloadCmd = &cobra.Command{
 	Use:   "download <repo_id>",
 	Short: "Download a model from Hugging Face Hub",
@@ -189,7 +290,11 @@ var modelsJobsCancelCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(modelsCmd)
 	modelsCmd.AddCommand(modelsListCmd)
+	modelsCmd.AddCommand(modelsFilesCmd)
 	modelsCmd.AddCommand(modelsDownloadCmd)
+	modelsCmd.AddCommand(modelsRegisterCmd)
+	modelsCmd.AddCommand(modelsGetCmd)
+	modelsCmd.AddCommand(modelsDeleteCmd)
 	modelsCmd.AddCommand(modelsJobsCmd)
 	modelsJobsCmd.AddCommand(modelsJobsListCmd)
 	modelsJobsCmd.AddCommand(modelsJobsGetCmd)

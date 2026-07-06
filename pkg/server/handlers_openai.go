@@ -1,14 +1,14 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
-	"llama-admin/pkg/backends"
 	"llama-admin/pkg/instance"
+	"llama-admin/pkg/validation"
 )
 
 type OpenAIListInstancesResponse struct {
@@ -58,22 +58,26 @@ func (h *Handler) OpenAIListInstances(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) OpenAIProxy(w http.ResponseWriter, r *http.Request) {
+	// The model field in the request body is the instance name only.
+	// Each instance serves exactly one model, so no splitting or rewriting needed.
+
 	// Read the entire body
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "failed to read request body")
+		writeOpenAIError(w, http.StatusBadRequest, "failed to read request body", "invalid_request_error")
 		return
 	}
 	defer r.Body.Close()
 
-	// Parse JSON
+	// Require model field
 	var body map[string]any
-	if err := json.Unmarshal(bodyBytes, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
-		return
+	if len(bodyBytes) > 0 {
+		if err := json.Unmarshal(bodyBytes, &body); err != nil {
+			writeOpenAIError(w, http.StatusBadRequest, "invalid JSON: "+err.Error(), "invalid_request_error")
+			return
+		}
 	}
 
-	// Require model field
 	modelRaw, ok := body["model"]
 	if !ok || modelRaw == nil {
 		writeOpenAIError(w, http.StatusBadRequest, "model is required", "invalid_request_error")
@@ -85,12 +89,12 @@ func (h *Handler) OpenAIProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Split instance/model
-	instanceName, modelName := backends.SplitInstanceModel(model)
+	// model = instance name
+	instanceName := model
 
 	// Validate instance name
-	if err := backends.ValidateInstanceName(instanceName); err != nil {
-		writeOpenAIError(w, http.StatusBadRequest, err.Error(), "invalid_request_error")
+	if !validation.IsValidInstanceName(instanceName) {
+		writeOpenAIError(w, http.StatusBadRequest, "invalid instance name: "+instanceName, "invalid_request_error")
 		return
 	}
 
@@ -103,43 +107,20 @@ func (h *Handler) OpenAIProxy(w http.ResponseWriter, r *http.Request) {
 
 	// Check shutting down
 	if inst.Status() == instance.StatusShuttingDown {
-		writeOpenAIError(w, http.StatusServiceUnavailable, "instance_shutting_down", " unavailable")
+		writeOpenAIError(w, http.StatusServiceUnavailable, "instance_shutting_down", "unavailable")
 		return
 	}
 
-	// Only proxy to instances that are already running; starting an
-	// instance is an explicit, asynchronous operation.
+	// Only proxy to instances that are already running
 	if inst.Status() != instance.StatusRunning {
 		writeOpenAIError(w, http.StatusServiceUnavailable, "instance_not_running", "unavailable")
 		return
 	}
 
-	// Resolve inner model
-	if modelName == "" {
-		// No "/" in model - set to instance's configured model
-		if model, ok := inst.Opts.BackendOptions["model"]; ok {
-			if m, ok := model.(string); ok && m != "" {
-				modelName = m
-			} else {
-				modelName = inst.Name
-			}
-		} else {
-			modelName = inst.Name
-		}
-	}
-	body["model"] = modelName
+	// Proxy the request body unchanged
+	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	r.ContentLength = int64(len(bodyBytes))
 
-	// Re-marshal body
-	newBody, err := json.Marshal(body)
-	if err != nil {
-		writeOpenAIError(w, http.StatusInternalServerError, "failed to marshal request", "internal_error")
-		return
-	}
-
-	r.Body = io.NopCloser(strings.NewReader(string(newBody)))
-	r.ContentLength = int64(len(newBody))
-
-	// Proxy to instance
 	inst.Proxy().ServeHTTP(w, r)
 }
 
